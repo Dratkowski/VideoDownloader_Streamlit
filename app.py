@@ -5,57 +5,49 @@ import re
 import subprocess
 import os
 from urllib.parse import urlparse
+import glob
 
 def extract_video_links(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        video_extensions = r'(https?://[^\s]+(\.mp4|\.m3u8|\.webm|\.avi|\.mov))'
+        video_extensions = r'(https?://[^\s\'"<>]+(\.mp4|\.m3u8|\.webm|\.avi|\.mov))'
         video_links = re.findall(video_extensions, soup.prettify())
         return [link[0] for link in video_links]
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to fetch the URL: {e}")
         return []
 
-def download_video(url, custom_filename, download_option):
-    save_path = os.getcwd()  # Use current directory instead of Desktop
-    if not custom_filename:
-        parsed_url = urlparse(url)
-        custom_filename = parsed_url.netloc
-    custom_filename = os.path.join(save_path, custom_filename)
+def download_video(url):
+    save_dir = os.path.join(os.getcwd(), "downloads")
+    os.makedirs(save_dir, exist_ok=True)
 
-    if not custom_filename.endswith(".mp4"):
-        custom_filename += ".mp4"
+    # Use yt-dlp output template to generate unique filenames
+    output_template = os.path.join(save_dir, '%(title)s-%(id)s.%(ext)s')
 
     try:
+        # Run yt-dlp, download best mp4 video + audio
         subprocess.run([
             "yt-dlp",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
-            "-o", custom_filename,
+            "-o", output_template,
             url
         ], check=True)
 
-        result_text = f"Download finished: {custom_filename}"
-        return custom_filename, result_text
-
+        # Find the most recent downloaded file in save_dir
+        list_of_files = glob.glob(os.path.join(save_dir, '*'))
+        latest_file = max(list_of_files, key=os.path.getctime)
+        return latest_file, f"Download finished: {os.path.basename(latest_file)}"
     except Exception as e:
-        return None, f"Error: {e}"
+        return None, f"Download error: {e}"
 
 st.title("📹 Video Link Extractor and Downloader")
 
 url = st.text_input("Enter Website URL to Extract Video Links:")
 
-download_option = st.selectbox(
-    "Select video option",
-    ["Youtube", ".m3u8", "MP4/Social Media Videos"],
-    index=2
-)
-
-custom_filename = st.text_input("Enter custom file name:", "default_filename")
-
-video_choice = url
 video_links = []
+video_choice = None
 
 if url:
     if 'facebook.com' in url:
@@ -70,9 +62,10 @@ if url:
         video_choice = url
 
 if st.button("Download") and video_choice:
-    file_path, result = download_video(video_choice, custom_filename, download_option)
-    if file_path:
-        st.success(result)
+    with st.spinner("Downloading video, please wait..."):
+        file_path, result_message = download_video(video_choice)
+    if file_path and os.path.exists(file_path):
+        st.success(result_message)
         with open(file_path, "rb") as f:
             st.download_button(
                 label="📥 Click to Download Video",
@@ -81,6 +74,6 @@ if st.button("Download") and video_choice:
                 mime="video/mp4"
             )
     else:
-        st.error(result)
+        st.error(result_message)
 else:
-    st.info("Enter a URL to begin.")
+    st.info("Enter a URL and select a video link to begin.")
