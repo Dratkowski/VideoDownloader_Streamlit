@@ -19,11 +19,11 @@ def extract_video_links(url):
         return []
 
 def download_video(url, custom_filename, download_option):
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+    save_path = os.getcwd()  # Use current directory instead of Desktop
     if not custom_filename:
         parsed_url = urlparse(url)
         custom_filename = parsed_url.netloc
-    custom_filename = os.path.join(desktop_path, custom_filename)
+    custom_filename = os.path.join(save_path, custom_filename)
 
     if url.lower().endswith(".mp4"):
         if not custom_filename.endswith(".mp4"):
@@ -60,7 +60,10 @@ download_option = st.selectbox(
     index=2
 )
 
-custom_filename = st.text_input("Enter custom file name (video will save to Desktop):", "default_filename")
+custom_filename = st.text_input("Enter custom file name:", "default_filename")
+
+video_choice = url
+video_links = []
 
 if url:
     if 'facebook.com' in url:
@@ -74,12 +77,18 @@ if url:
         st.warning("No video links found. Defaulting to entered URL.")
         video_choice = url
 
-    if st.button("Download"):
-        file_path, result = download_video(video_choice, custom_filename, download_option)
-        if file_path:
-            st.success(result)
-            st.markdown(f"[📁 Open File]({file_path})")
-        else:
-            st.error(result)
+if st.button("Download") and video_choice:
+    file_path, result = download_video(video_choice, custom_filename, download_option)
+    if file_path:
+        st.success(result)
+        with open(file_path, "rb") as f:
+            st.download_button(
+                label="📥 Click to Download Video",
+                data=f,
+                file_name=os.path.basename(file_path),
+                mime="video/mp4"
+            )
+    else:
+        st.error(result)
 else:
     st.info("Enter a URL to begin.")
