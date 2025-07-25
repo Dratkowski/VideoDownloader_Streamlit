@@ -23,24 +23,23 @@ def download_video(url):
     save_dir = os.path.join(os.getcwd(), "downloads")
     os.makedirs(save_dir, exist_ok=True)
 
-    # Use yt-dlp output template to generate unique filenames
     output_template = os.path.join(save_dir, '%(title)s-%(id)s.%(ext)s')
 
     try:
-        # Run yt-dlp, download best mp4 video + audio
         subprocess.run([
             "yt-dlp",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
             "-o", output_template,
+            "--merge-output-format", "mp4",  # force merged output as mp4
             url
         ], check=True)
 
-        # Find the most recent downloaded file in save_dir
         list_of_files = glob.glob(os.path.join(save_dir, '*'))
         latest_file = max(list_of_files, key=os.path.getctime)
         return latest_file, f"Download finished: {os.path.basename(latest_file)}"
     except Exception as e:
         return None, f"Download error: {e}"
+
 
 st.title("📹 Video Link Extractor and Downloader")
 
