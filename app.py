@@ -6,6 +6,15 @@ import subprocess
 import os
 from urllib.parse import urlparse
 import glob
+import shutil
+
+def check_ffmpeg():
+    if shutil.which("ffmpeg") is None:
+        st.error("⚠️ ffmpeg not found! Please install ffmpeg and ensure it's in your system PATH. Video merging will fail without it.")
+        return False
+    else:
+        st.success("✅ ffmpeg found and ready to use.")
+        return True
 
 def extract_video_links(url):
     try:
@@ -30,7 +39,7 @@ def download_video(url):
             "yt-dlp",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
             "-o", output_template,
-            "--merge-output-format", "mp4",  # force merged output as mp4
+            "--merge-output-format", "mp4",
             url
         ], check=True)
 
@@ -40,8 +49,9 @@ def download_video(url):
     except Exception as e:
         return None, f"Download error: {e}"
 
-
 st.title("📹 Video Link Extractor and Downloader")
+
+ffmpeg_ready = check_ffmpeg()
 
 url = st.text_input("Enter Website URL to Extract Video Links:")
 
@@ -61,18 +71,21 @@ if url:
         video_choice = url
 
 if st.button("Download") and video_choice:
-    with st.spinner("Downloading video, please wait..."):
-        file_path, result_message = download_video(video_choice)
-    if file_path and os.path.exists(file_path):
-        st.success(result_message)
-        with open(file_path, "rb") as f:
-            st.download_button(
-                label="📥 Click to Download Video",
-                data=f,
-                file_name=os.path.basename(file_path),
-                mime="video/mp4"
-            )
+    if not ffmpeg_ready:
+        st.error("Cannot download because ffmpeg is missing.")
     else:
-        st.error(result_message)
+        with st.spinner("Downloading video, please wait..."):
+            file_path, result_message = download_video(video_choice)
+        if file_path and os.path.exists(file_path):
+            st.success(result_message)
+            with open(file_path, "rb") as f:
+                st.download_button(
+                    label="📥 Click to Download Video",
+                    data=f,
+                    file_name=os.path.basename(file_path),
+                    mime="video/mp4"
+                )
+        else:
+            st.error(result_message)
 else:
     st.info("Enter a URL and select a video link to begin.")
