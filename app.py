@@ -25,26 +25,18 @@ def download_video(url, custom_filename, download_option):
         custom_filename = parsed_url.netloc
     custom_filename = os.path.join(save_path, custom_filename)
 
-    if url.lower().endswith(".mp4"):
-        if not custom_filename.endswith(".mp4"):
-            custom_filename += ".mp4"
-        download_option = "MP4"
-    elif download_option == ".m3u8" and not custom_filename.endswith(".mp4"):
-        custom_filename += ".mp4"
-    elif download_option == "MP4/Social Media Videos" and not custom_filename.endswith(".mp4"):
+    if not custom_filename.endswith(".mp4"):
         custom_filename += ".mp4"
 
     try:
-        subprocess.run(["yt-dlp", "-o", custom_filename, url], check=True)
-        result_text = f"Download finished: {custom_filename}"
+        subprocess.run([
+            "yt-dlp",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
+            "-o", custom_filename,
+            url
+        ], check=True)
 
-        if download_option == "Youtube":
-            webm_file = f"{custom_filename}.webm"
-            mp4_file = f"{custom_filename}.mp4"
-            subprocess.run(["ffmpeg", "-i", webm_file, mp4_file], check=True)
-            os.remove(webm_file)
-            result_text = f"Download and conversion finished: {mp4_file}"
-            return mp4_file, result_text
+        result_text = f"Download finished: {custom_filename}"
         return custom_filename, result_text
 
     except Exception as e:
